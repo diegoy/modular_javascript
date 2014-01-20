@@ -1,7 +1,8 @@
-// Code based on http://addyosmani.com/largescalejavascript/
-// And the design patterns book http://addyosmani.com/resources/essentialjsdesignpatterns/book/#designpatternsjavascript
+// Code based on http://addyosmani.com/largescalejavascript/ And the design
+// patterns book
+// http://addyosmani.com/resources/essentialjsdesignpatterns/book/#designpatternsjavascript
 
-var mediator = (function(){
+var mediator = (function() {
   var subscribe = function(channel, fn){
     if (!mediator.channels[channel]) {
       mediator.channels[channel] = [];
@@ -31,17 +32,51 @@ var mediator = (function(){
   };
 }());
 
+var github = (function() {
+  var httpRequest = new XMLHttpRequest();
+  var publishAjaxCompleted = function() {
+    if (httpRequest.readyState === 4 && httpRequest.status === 200) {
+      mediator.publish('refreshUser', JSON.parse(httpRequest.responseText));
+    }
+  };
+
+  var getUser = function (user) {
+    httpRequest = new XMLHttpRequest();
+    httpRequest.onreadystatechange = publishAjaxCompleted;
+    httpRequest.open('GET', 'https://api.github.com/users/' + user);
+    httpRequest.send();
+  };
+
+  return {
+    getUser: getUser
+  };
+
+}());
+
+var ui = (function() {
+  var refresh = function(data) {
+    updatableArea = document.querySelector('#updatableArea');
+    updatableArea.innerHTML = data.login;
+    updatableArea.innerHTML += "<img src='"+data.avatar_url+"'>";
+  };
+  return {
+    user: {
+      refresh: refresh
+    }
+  }
+}());
+
 
 window.onload = function() {
   //Pub/sub on a centralized mediator
-  mediator.subscribe('update', function(arg){
-    updatableArea = document.querySelector('#updatableArea');
-    updatableArea.innerHTML = '<p>Ei eu fui atualizado '+ arg+ '</p>';
-  });
+  mediator.subscribe('refreshUser', ui.user.refresh);
+
+  mediator.subscribe('updateClick', github.getUser);
 
   updateButton = document.querySelector('#updateButton');
   updateButton.addEventListener('click', function() {
-    mediator.publish('update', 'yahoo');
+    userName = document.querySelector('#githubUser').value;
+    mediator.publish('updateClick', userName);
   });
 };
 
